@@ -7,3 +7,5 @@ vFlat 으로 스캔한 파일을 pdf 로 만들어 주는 프로젝트
 /sdcard/Android/data/com.voyagerx.scanner/files/vFlat/bookshelf.db
 /sdcard/Android/data/com.voyagerx.scanner/files/vFlat/book_1/
 ```
+
+`poetry run python ./vflattopdf/__init__.py`
