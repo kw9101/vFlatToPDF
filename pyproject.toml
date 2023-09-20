@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "vflattopdf"
+version = "0.1.0"
+description = ""
+authors = ["kiwon <kw9101@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
