@@ -1,70 +1,124 @@
 import os
 import shutil
 import sqlite3
+from PIL import Image, ImageDraw
+from reportlab.pdfgen import canvas
 
-if __name__ == "__main__":
-    # SQLite 데이터베이스에 연결
-    with sqlite3.connect('../vFlat/bookshelf.db') as connection:
-        # 커서 생성
-        cursor = connection.cursor()
+# JPG 파일 경로 목록 설정
+jpg_files = [
+    './out/두두/0.jpg',
+    './out/두두/1.jpg',
+    './out/두두/2.jpg',
+    './out/두두/3.jpg',
+    './out/두두/4.jpg',
+    # 추가 이미지 파일 경로들을 여기에 나열
+]
 
-        # 테이블 목록 가져오기
-        # cursor.execute("SELECT path, page_no FROM page;")
-        cursor.execute("SELECT id, title, cover FROM book;")
-        books = cursor.fetchall()
+# PDF 파일 이름 설정
+pdf_file = '두두.pdf'
 
-    for book in books:
-        book_id = book[0]
-        book_title = book[1]
-        book_cover = book[2]
+# 이미지를 PDF로 변환
+def images_to_pdf(input_images, output_pdf):
+    c = canvas.Canvas(output_pdf, pagesize=Image.open(input_images[0]).size)
+    for image_path in input_images:
+        c.drawImage(image_path, 0, 0)
+        c.showPage()
+    c.save()
 
-        print(book_id, book_title, book_cover)
+def trim(image_path, output_path, threshold=0):
+    # 이미지 열기
+    img = Image.open(image_path)
 
-    # SQLite 데이터베이스에 연결
-    with sqlite3.connect('../vFlat/bookshelf.db') as connection:
-        # 커서 생성
-        cursor = connection.cursor()
+    # 이미지 주변의 여백을 자르기
+    img = img.crop(img.getbbox())
 
-        # 테이블 목록 가져오기
-        cursor.execute("SELECT path, page_no FROM page WHERE path LIKE '/book_2%';")
-        pages = cursor.fetchall()
+    # 임계값(threshold)보다 작은 픽셀 값 제거 (옵션)
+    if threshold > 0:
+        img = img.point(lambda p: p > threshold and 255)
 
-    for page in pages:
-        page_path = f'.{page[0]}'
+    # 결과 이미지 저장
+    img.save(output_path)
 
-        page_no = int(page[1])
+def draw_red_box(input_image_path, output_image_path):
+    # 이미지 열기
+    image = Image.open(input_image_path)
 
-        # new_file_name = f'./out/{page_no}.jpg'
-        # shutil.copy(path, new_file_name)
+    # 이미지 내에서 실제 내용을 둘러싼 바운딩 박스 좌표 얻기
+    bbox = image.getbbox()
 
-        print(page_path, page_no)
+    # 이미지에 그릴 도구 생성
+    draw = ImageDraw.Draw(image)
+
+    # 빨간색 박스 그리기
+    draw.rectangle(bbox, outline="red", width=20)
+
+    # 결과 이미지 저장
+    image.save(output_image_path)
+
+def apply_threshold(input_image_path, output_image_path, threshold):
+    # 이미지 열기
+    image = Image.open(input_image_path)
+
+    # 이미지를 흑백으로 변환
+    grayscale_image = image.convert('L')
+
+    inverted_image = grayscale_image.point(lambda p: 255 - p)
+
+    # 임계값 이하의 픽셀 값을 0으로 설정
+    thresholded_image = inverted_image.point(lambda p: p > threshold and 255)
+
+    # 결과 이미지 저장
+    thresholded_image.save(output_image_path)
+
+if __name__ == '__main__':
+    input_image = './out/두두/4.jpg'  # 입력 JPG 이미지 파일 경로
+    output_image = './out/두두/4_threshod.jpg'  # 결과 이미지 파일 경로
+    apply_threshold(input_image, output_image, 50)
 
 
-    # # 시작 폴더 경로
-    # start_folder = './book_1'
+    draw_red_box(output_image, './out/두두/4_redbox.jpg')
+    # trim(input_image, output_image)
 
-    # # 복사 대상 폴더 경로
-    # copy_to_folder = './out'  # 현재 폴더
+# if __name__ == "__main__":
+#     db_path = './vFlat/bookshelf.db'
+#     # SQLite 데이터베이스에 연결
+#     with sqlite3.connect(db_path) as connection:
+#         # 커서 생성
+#         cursor = connection.cursor()
 
-    # # 시작 폴더에서부터 재귀적으로 자식 폴더를 찾습니다.
-    # child_folders = find_child_folders(start_folder)
+#         # 테이블 목록 가져오기
+#         # cursor.execute("SELECT path, page_no FROM page;")
+#         cursor.execute("SELECT id, title, cover FROM book;")
+#         books = cursor.fetchall()
 
-    # # 각 자식 폴더에 대해 파일 목록을 얻습니다.
-    # all_files = []
-    # for folder in child_folders:
-    #     files_in_folder = get_files_in_folder(folder)
-    #     all_files.extend(files_in_folder)
+#     for book in books:
+#         book_id = book[0]
+#         book_title = book[1]
+#         book_cover = book[2]
 
-    # # 확장자가 없는 파일들을 필터링합니다.
-    # files_with_no_extension = filter_files_with_no_extension(all_files)
+#         print(book_id, book_title, book_cover)
 
-    # # 확장자가 없는 파일들을 필터링하고, 작성된 순서대로 정렬합니다.
-    # files_with_no_extension = sorted(filter_files_with_no_extension(all_files))
+#     # SQLite 데이터베이스에 연결
+#     with sqlite3.connect(db_path) as connection:
+#         # 커서 생성
+#         cursor = connection.cursor()
 
-    # # 파일을 복사하고 이름을 순서대로 붙입니다.
-    # for index, file_path in enumerate(files_with_no_extension, start=1):
-    #     folder_name = os.path.basename(os.path.dirname(file_path))
-    #     new_file_name = os.path.join(copy_to_folder, f'{index}.jpg')
-    #     shutil.copy(file_path, new_file_name)
+#         # 테이블 목록 가져오기
+#         cursor.execute("SELECT path, page_no FROM page WHERE path LIKE '/book_2%';")
+#         pages = cursor.fetchall()
 
-    # print("복사 및 이름 변경이 완료되었습니다.")
+#     for page in pages:
+#         page_path = f'./vFlat/{page[0]}'
+
+#         page_no = int(page[1])
+
+#         new_file_name = f'./out/{book_title}/{page_no}.jpg'
+
+#         os.makedirs(os.path.dirname(new_file_name), exist_ok=True)
+
+#         shutil.copy(page_path, new_file_name)
+
+#         print(page_path, page_no)
+
+
+#     images_to_pdf(jpg_files, pdf_file)
