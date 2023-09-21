@@ -50,10 +50,21 @@ def draw_red_box(input_image_path, output_image_path):
     draw = ImageDraw.Draw(image)
 
     # 빨간색 박스 그리기
-    draw.rectangle(bbox, outline="red", width=20)
+    draw.rectangle(bbox, outline="red", width=3)
 
     # 결과 이미지 저장
     image.save(output_image_path)
+
+def crop_image(input_image_path, output_image_path, top, bottom, left, right):
+    # 이미지 열기
+    image = Image.open(input_image_path)
+
+    # 이미지 자르기
+    width, height = image.size
+    cropped_image = image.crop((left, top, width - right, height - bottom))
+
+    # 결과 이미지 저장
+    cropped_image.save(output_image_path)
 
 def apply_threshold(input_image_path, output_image_path, threshold):
     # 이미지 열기
@@ -72,11 +83,12 @@ def apply_threshold(input_image_path, output_image_path, threshold):
 
 if __name__ == '__main__':
     input_image = './out/두두/4.jpg'  # 입력 JPG 이미지 파일 경로
-    output_image = './out/두두/4_threshod.jpg'  # 결과 이미지 파일 경로
-    apply_threshold(input_image, output_image, 50)
+    threshold_image = './out/두두/4_threshod.jpg'  # 결과 이미지 파일 경로
+    apply_threshold(input_image, threshold_image, 50)
 
-
-    draw_red_box(output_image, './out/두두/4_redbox.jpg')
+    croped_image = './out/두두/4_crop.jpg'
+    crop_image(threshold_image, croped_image, 100, 100, 80, 80)
+    draw_red_box(croped_image, './out/두두/4_redbox.jpg')
     # trim(input_image, output_image)
 
 # if __name__ == "__main__":
