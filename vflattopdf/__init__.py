@@ -2,59 +2,42 @@ import os
 import shutil
 import sqlite3
 
-def find_child_folders(folder_path):
-    child_folders = []
-
-    # 현재 폴더에서 하위 항목(파일 및 폴더)을 모두 가져옵니다.
-    items = os.listdir(folder_path)
-
-    for item in items:
-        item_path = os.path.join(folder_path, item)
-
-        # 아이템이 폴더인 경우
-        if os.path.isdir(item_path):
-            child_folders.append(item_path)
-
-            # 재귀적으로 하위 폴더를 찾습니다.
-            child_folders.extend(find_child_folders(item_path))
-
-    return child_folders
-
-def get_files_in_folder(folder_path):
-    # 폴더 내의 파일 목록을 얻습니다.
-    files = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
-    return files
-
-def filter_files_with_no_extension(file_list):
-    files_with_no_extension = []
-    for file_path in file_list:
-        file_name, file_extension = os.path.splitext(os.path.basename(file_path))
-        if not file_extension:
-            files_with_no_extension.append(file_path)
-    return files_with_no_extension
-
-
-
 if __name__ == "__main__":
     # SQLite 데이터베이스에 연결
-    with sqlite3.connect('./bookshelf.db') as connection:
+    with sqlite3.connect('../vFlat/bookshelf.db') as connection:
         # 커서 생성
         cursor = connection.cursor()
 
         # 테이블 목록 가져오기
-        cursor.execute("SELECT path, page_no FROM page;")
+        # cursor.execute("SELECT path, page_no FROM page;")
+        cursor.execute("SELECT id, title, cover FROM book;")
+        books = cursor.fetchall()
+
+    for book in books:
+        book_id = book[0]
+        book_title = book[1]
+        book_cover = book[2]
+
+        print(book_id, book_title, book_cover)
+
+    # SQLite 데이터베이스에 연결
+    with sqlite3.connect('../vFlat/bookshelf.db') as connection:
+        # 커서 생성
+        cursor = connection.cursor()
+
+        # 테이블 목록 가져오기
+        cursor.execute("SELECT path, page_no FROM page WHERE path LIKE '/book_2%';")
         pages = cursor.fetchall()
 
     for page in pages:
-        path = page[0]
-        path = f'.{path}' # os.path.join('./', path)
+        page_path = f'.{page[0]}'
 
-        page_no = page[1]
+        page_no = int(page[1])
 
-        new_file_name = f'./{page_no}.jpg'
-        shutil.copy(path, new_file_name)
+        # new_file_name = f'./out/{page_no}.jpg'
+        # shutil.copy(path, new_file_name)
 
-        print(path)
+        print(page_path, page_no)
 
 
     # # 시작 폴더 경로
