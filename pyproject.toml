@@ -9,6 +9,7 @@ readme = "README.md"
 python = "^3.11"
 pillow = "^10.0.1"
 reportlab = "^4.0.5"
+pyclovaocr = "^1.0"
 
 
 [build-system]

@@ -3,6 +3,8 @@ import shutil
 import sqlite3
 from PIL import Image, ImageDraw
 from reportlab.pdfgen import canvas
+from pyclovaocr import ClovaOCR
+from hanspell import spell_checker
 
 # JPG 파일 경로 목록 설정
 jpg_files = [
@@ -82,13 +84,32 @@ def apply_threshold(input_image_path, output_image_path, threshold):
     thresholded_image.save(output_image_path)
 
 if __name__ == '__main__':
-    input_image = './out/두두/4.jpg'  # 입력 JPG 이미지 파일 경로
-    threshold_image = './out/두두/4_threshod.jpg'  # 결과 이미지 파일 경로
-    apply_threshold(input_image, threshold_image, 50)
+    # input_image = './out/두두/4.jpg'  # 입력 JPG 이미지 파일 경로
+    # ocr = ClovaOCR()
 
-    croped_image = './out/두두/4_crop.jpg'
-    crop_image(threshold_image, croped_image, 100, 100, 80, 80)
-    draw_red_box(croped_image, './out/두두/4_redbox.jpg')
+    # result = ocr.run_ocr(
+    #     image_path = input_image,
+    #     language_code = 'ko',
+    #     ocr_mode = 'general',
+    # )
+
+    # text = ''
+    # for word in result['words']:
+    #     text += word['text'] + ' '
+
+    # print(text)
+
+    spelled_sent = spell_checker.check("맞춤법 틀리면 외 않되? 쓰고싶은대로쓰면돼지 ")
+    print(spelled_sent)
+    # spelled_sent = spell_checker.check(text)
+    # checked_sent = spelled_sent.checked
+    # print(checked_sent)
+    # threshold_image = './out/두두/4_threshod.jpg'  # 결과 이미지 파일 경로
+    # apply_threshold(input_image, threshold_image, 50)
+
+    # croped_image = './out/두두/4_crop.jpg'
+    # crop_image(threshold_image, croped_image, 100, 100, 80, 80)
+    # draw_red_box(croped_image, './out/두두/4_redbox.jpg')
     # trim(input_image, output_image)
 
 # if __name__ == "__main__":

@@ -39,5 +39,6 @@ pip-wheel-metadata
 /poetry.toml
 
 poetry/core/*
-/vFlat/**
+/vFlat/*
 /out/*
+*.zip
