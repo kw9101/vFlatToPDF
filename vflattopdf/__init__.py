@@ -6,27 +6,16 @@ from PIL import Image, ImageDraw
 from reportlab.pdfgen import canvas
 # from pyclovaocr import ClovaOCR
 import easyocr
+from tqdm import tqdm
+import time
 
 # 이미지를 PDF로 변환
 def images_to_pdf(input_images, output_pdf):
     c = canvas.Canvas(output_pdf, pagesize=Image.open(input_images[0]).size)
-    for image_path in input_images:
+    for image_path in tqdm(input_images, desc="pdf", ncols=100):
         c.drawImage(image_path, 0, 0)
         c.showPage()
     c.save()
-
-# 접미사가 `_crop.jpg`인 파일을 찾아서 리스트로 반환
-def find_suffix_files(directory, suffix):
-    crop_files = []  # `_crop.jpg`로 끝나는 파일을 저장할 리스트
-
-    # 디렉토리 내의 모든 파일과 디렉토리를 순회
-    for root, dirs, files in os.walk(directory):
-        for file in files:
-            if file.endswith(suffix):
-                # 파일 이름이 `_crop.jpg`로 끝나면 리스트에 추가
-                crop_files.append(os.path.join(root, file))
-
-    return sorted(crop_files)
 
 
 def draw_red_box(input_image_path, output_image_path, bbox=None):
@@ -44,6 +33,7 @@ def draw_red_box(input_image_path, output_image_path, bbox=None):
 
     # 결과 이미지 저장
     image.save(output_image_path)
+
 
 def crop_image(input_image_path, output_image_path, bbox):
     # 이미지 열기
@@ -86,7 +76,7 @@ def copy_vflat_to_out(pages, output_folder):
         os.makedirs(output_folder)
 
     out_page_paths = []
-    for page in pages:
+    for page in tqdm(pages, desc="copy", ncols=100): # vflat page 를 page 번호 순서대로 out 폴더에 복사
         page_path = f'./vFlat/{page[0]}'
         page_no = int(page[1])
         out_page_path = f'{output_folder}/{page_no:04}.jpg'
@@ -135,7 +125,7 @@ def crop_images_by_text(pages, output_folder, space = 100):
     # tbbox = calculate_total_bbox(bounding_boxes)
 
     crop_pages = []
-    for page in pages:
+    for page in tqdm(pages, desc="crop", ncols=100):
         # detect
         result = reader.detect(page)
         bounding_boxes = result[0][0]
@@ -170,7 +160,7 @@ def normalize_images_to_reference(reference_image_path, pages, output_folder):
 
     nomalize_pages = []
     # 이미지 크기를 기준 이미지의 높이에 맞게 조정
-    for page in pages:
+    for page in tqdm(pages, desc="normalize", ncols=100):
         # 이미지 열기
         img = Image.open(page)
 
@@ -220,18 +210,9 @@ if __name__ == "__main__":
         cursor.execute(f"SELECT path, page_no FROM page WHERE path LIKE '/book_{book_id}/%';")
         vflat_pages = cursor.fetchall()
 
-    print('vflat 이미지 복사 시작')
     out_pages = copy_vflat_to_out(vflat_pages, f'./out/{book_title}') # vflat page 를 page 번호 순서대로 out 폴더에 복사
-    print('vflat 이미지 복사 끝')
-    
-    print('복사한 파일 자르기 시작')
     crop_pages = crop_images_by_text(out_pages, f'./out/{book_title}/crop', space = 150) # out 폴더에 있는 이미지를 텍스트 기준으로 자르기
-    print('복사한 파일 자르기 끝')
-
-    print('자른 파일 정규화 시작')
     normalize_files = normalize_images_to_reference(crop_pages[0], crop_pages, f'./out/{book_title}/normalize') # crop 폴더에 있는 이미지를 첫번째 이미지 기준으로 정규화
-    print('자른 파일 정규화 끝')
-
-    print('PDF 변환 시작')
     images_to_pdf(normalize_files, f'./out/{book_title}.pdf') # normalize 폴더에 있는 이미지를 PDF로 변환
-    print('PDF 변환 끝')
+
+    print(f"작업 완료: ./out/{book_title}.pdf")
