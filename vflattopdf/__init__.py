@@ -15,13 +15,14 @@ def images_to_pdf(input_images, output_pdf):
         c.showPage()
     c.save()
 
-def find_crop_files(directory):
+# 접미사가 `_crop.jpg`인 파일을 찾아서 리스트로 반환
+def find_suffix_files(directory, suffix):
     crop_files = []  # `_crop.jpg`로 끝나는 파일을 저장할 리스트
 
     # 디렉토리 내의 모든 파일과 디렉토리를 순회
     for root, dirs, files in os.walk(directory):
         for file in files:
-            if file.endswith("_crop.jpg"):
+            if file.endswith(suffix):
                 # 파일 이름이 `_crop.jpg`로 끝나면 리스트에 추가
                 crop_files.append(os.path.join(root, file))
 
@@ -78,6 +79,23 @@ def calculate_total_bbox(bboxes):
     # print("Total Bounding Box:", total_bbox)
     return (total_left, total_top, total_right, total_bottom)
 
+
+def copy_vflat_to_out(pages, output_folder):
+    # 출력 폴더가 없으면 생성
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    out_page_paths = []
+    for page in pages:
+        page_path = f'./vFlat/{page[0]}'
+        page_no = int(page[1])
+        out_page_path = f'{output_folder}/{page_no:04}.jpg'
+        shutil.copy(page_path, out_page_path)
+        out_page_paths.append(out_page_path)
+    
+    return out_page_paths
+
+
 def find_enclosing_bbox(bboxes):
     if not bboxes:
         return None  # 빈 리스트면 None 반환
@@ -93,37 +111,89 @@ def find_enclosing_bbox(bboxes):
     enclosing_bbox = [left, top, right, bottom]
     return enclosing_bbox
 
-def after_proc(reader, input_image, output_image, space=100):
-    # # clovaocr
-    # # ocr = ClovaOCR()
-    # # result = ocr.run_ocr(
-    # #     image_path = input_image,
-    # #     language_code = 'ko',
-    # #     ocr_mode = 'general',
-    # # )
-    # # bounding_boxes = [line['boundingBox'] for line in result['lines']]
 
-    # # easyocr
-    # reader = easyocr.Reader(['ko', 'en'])
+def crop_images_by_text(pages, output_folder, space = 100):
+    # 출력 폴더가 없으면 생성
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    # clovaocr
+    # ocr = ClovaOCR()
+    # result = ocr.run_ocr(
+    #     image_path = input_image,
+    #     language_code = 'ko',
+    #     ocr_mode = 'general',
+    # )
+    # bounding_boxes = [line['boundingBox'] for line in result['lines']]
+
+    # easyocr
+    reader = easyocr.Reader(['ko', 'en'])
 
     # readtext
     # result = reader.readtext(input_image)
     # bounding_boxes = [line[0] for line in result]
     # tbbox = calculate_total_bbox(bounding_boxes)
 
-    # detect
-    result = reader.detect(input_image)
-    bounding_boxes = result[0][0]
-    if not bounding_boxes:
-        return
-    
-    tbbox = find_enclosing_bbox(bounding_boxes)
+    crop_pages = []
+    for page in pages:
+        # detect
+        result = reader.detect(page)
+        bounding_boxes = result[0][0]
+        if not bounding_boxes:
+            continue
+        
+        tbbox = find_enclosing_bbox(bounding_boxes)
 
-    tbbox = (tbbox[0] - space, tbbox[1] - space, tbbox[2] + space, tbbox[3])
-    crop_image(input_image, output_image, tbbox)
+        # tbbox = (tbbox[0] - space, tbbox[1], tbbox[2] + space, tbbox[3])
+        left = tbbox[0] - space
+        top = tbbox[1] - space * 0.5 # tbbox[1], 위 쪽은 일정하게 자른다.
+        right = tbbox[2] + space
+        bottom = tbbox[3] + 10 # 보통 페이지를 표시한다. 바로 자른다.
+
+        crop_page_path = os.path.splitext(os.path.basename(page))[0] + '_crop.jpg'
+        crop_page_path = os.path.join(output_folder, crop_page_path)
+        crop_image(page, crop_page_path, (left, top, right, bottom))
+        crop_pages.append(crop_page_path)
+    
+    return crop_pages
+
+
+def normalize_images_to_reference(reference_image_path, pages, output_folder):
+    # 기준 이미지 열기
+    reference_image = Image.open(reference_image_path)
+    reference_width = reference_image.size[0]  # 기준 이미지의 너비
+    reference_height = reference_image.size[1]  # 기준 이미지의 높이
+
+    # 출력 폴더가 없으면 생성
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    nomalize_pages = []
+    # 이미지 크기를 기준 이미지의 높이에 맞게 조정
+    for page in pages:
+        # 이미지 열기
+        img = Image.open(page)
+
+        img_width = img.size[0]
+        img_height = img.size[1]
+
+        ratio_by_width = reference_width / img_width
+        ratio_by_height = reference_height / img_height
+        normalize_img = img.resize((int(img.width * ratio_by_width), int(img.height * ratio_by_height)), Image.LANCZOS)
+
+        # 새로 조정된 이미지를 저장
+        normalize_page_path = os.path.splitext(os.path.basename(page))[0] + '_normalized.jpg'
+        normalize_page_path = os.path.join(output_folder, normalize_page_path)
+        normalize_img.save(normalize_page_path)
+
+        nomalize_pages.append(normalize_page_path)
+    
+    return nomalize_pages
 
 
 if __name__ == "__main__":
+    select_book_index = 1 # pdf 로 변환할 책 선택
+
     db_path = './vFlat/bookshelf.db'
     # SQLite 데이터베이스에 연결
     with sqlite3.connect(db_path) as connection:
@@ -131,11 +201,9 @@ if __name__ == "__main__":
         cursor = connection.cursor()
 
         # 테이블 목록 가져오기
-        # cursor.execute("SELECT path, page_no FROM page;")
         cursor.execute("SELECT id, title, cover FROM book;")
         books = cursor.fetchall()
 
-    select_book_index = 0
     book = books[select_book_index]
     book_id = book[0]
     book_title = book[1]
@@ -143,35 +211,27 @@ if __name__ == "__main__":
 
     print(book_id, book_title, book_cover)
 
-    # # SQLite 데이터베이스에 연결
-    # with sqlite3.connect(db_path) as connection:
-    #     # 커서 생성
-    #     cursor = connection.cursor()
+    # SQLite 데이터베이스에 연결
+    with sqlite3.connect(db_path) as connection:
+        # 커서 생성
+        cursor = connection.cursor()
 
-    #     # 테이블 목록 가져오기
-    #     cursor.execute(f"SELECT path, page_no FROM page WHERE path LIKE '/book_{book_id}/%';")
-    #     pages = cursor.fetchall()
+        # 선택한 책의 페이지 가져오기 
+        cursor.execute(f"SELECT path, page_no FROM page WHERE path LIKE '/book_{book_id}/%';")
+        vflat_pages = cursor.fetchall()
 
-    # # easyocr
-    # reader = easyocr.Reader(['ko', 'en'])
+    print('vflat 이미지 복사 시작')
+    out_pages = copy_vflat_to_out(vflat_pages, f'./out/{book_title}') # vflat page 를 page 번호 순서대로 out 폴더에 복사
+    print('vflat 이미지 복사 끝')
+    
+    print('복사한 파일 자르기 시작')
+    crop_pages = crop_images_by_text(out_pages, f'./out/{book_title}/crop', space = 150) # out 폴더에 있는 이미지를 텍스트 기준으로 자르기
+    print('복사한 파일 자르기 끝')
 
-    # for page in pages:
-    #     page_path = f'./vFlat/{page[0]}'
+    print('자른 파일 정규화 시작')
+    normalize_files = normalize_images_to_reference(crop_pages[0], crop_pages, f'./out/{book_title}/normalize') # crop 폴더에 있는 이미지를 첫번째 이미지 기준으로 정규화
+    print('자른 파일 정규화 끝')
 
-    #     page_no = int(page[1])
-
-    #     new_file_name = f'./out/{book_title}/{page_no:04}.jpg'
-
-    #     print(page_path, page_no, new_file_name)
-
-    #     os.makedirs(os.path.dirname(new_file_name), exist_ok=True)
-
-    #     shutil.copy(page_path, new_file_name)
-
-    #     after_file_name = f'./out/{book_title}/{page_no:04}_crop.jpg'
-    #     after_proc(reader, new_file_name, after_file_name)
-
-    jpg_files = find_crop_files(f'./out/{book_title}/')
-    pprint(jpg_files)
-    pdf_file = f'./out/{book_title}.pdf'
-    images_to_pdf(jpg_files, pdf_file)
+    print('PDF 변환 시작')
+    images_to_pdf(normalize_files, f'./out/{book_title}.pdf') # normalize 폴더에 있는 이미지를 PDF로 변환
+    print('PDF 변환 끝')
