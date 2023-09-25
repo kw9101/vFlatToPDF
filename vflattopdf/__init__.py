@@ -77,26 +77,26 @@ def copy_vflat_to_out(pages, output_folder):
 
     out_page_paths = []
     for page in tqdm(pages, desc="copy", ncols=100): # vflat page 를 page 번호 순서대로 out 폴더에 복사
-        page_path = f'./vFlat/{page[0]}'
+        page_path = f'./vFlat{page[0]}'
         page_no = int(page[1])
         out_page_path = f'{output_folder}/{page_no:04}.jpg'
         shutil.copy(page_path, out_page_path)
         out_page_paths.append(out_page_path)
-    
+
     return out_page_paths
 
 
 def find_enclosing_bbox(bboxes):
     if not bboxes:
         return None  # 빈 리스트면 None 반환
-    
+
     # bboxes = bboxes[:-1] # 페이지 숫자 제거
     # 초기 최소/최대 좌표 설정
     left = min(b[0] for b in bboxes)
     right = max(b[1] for b in bboxes)
     top = min(b[2] for b in bboxes)
     bottom = max(b[3] for b in bboxes)
-    
+
     # 모든 바운딩 박스를 포함하는 최소 바운딩 박스 좌표 반환
     enclosing_bbox = [left, top, right, bottom]
     return enclosing_bbox
@@ -117,7 +117,7 @@ def crop_images_by_text(pages, output_folder, space = 100):
     # bounding_boxes = [line['boundingBox'] for line in result['lines']]
 
     # easyocr
-    reader = easyocr.Reader(['ko', 'en'])
+    reader = easyocr.Reader(['ko', 'en'], gpu=True)
 
     # readtext
     # result = reader.readtext(input_image)
@@ -131,7 +131,7 @@ def crop_images_by_text(pages, output_folder, space = 100):
         bounding_boxes = result[0][0]
         if not bounding_boxes:
             continue
-        
+
         tbbox = find_enclosing_bbox(bounding_boxes)
 
         # tbbox = (tbbox[0] - space, tbbox[1], tbbox[2] + space, tbbox[3])
@@ -144,7 +144,7 @@ def crop_images_by_text(pages, output_folder, space = 100):
         crop_page_path = os.path.join(output_folder, crop_page_path)
         crop_image(page, crop_page_path, (left, top, right, bottom))
         crop_pages.append(crop_page_path)
-    
+
     return crop_pages
 
 
@@ -177,12 +177,12 @@ def normalize_images_to_reference(reference_image_path, pages, output_folder):
         normalize_img.save(normalize_page_path)
 
         nomalize_pages.append(normalize_page_path)
-    
+
     return nomalize_pages
 
 
 if __name__ == "__main__":
-    select_book_index = 1 # pdf 로 변환할 책 선택
+    select_book_index = 2 # pdf 로 변환할 책 선택
 
     db_path = './vFlat/bookshelf.db'
     # SQLite 데이터베이스에 연결
@@ -206,7 +206,7 @@ if __name__ == "__main__":
         # 커서 생성
         cursor = connection.cursor()
 
-        # 선택한 책의 페이지 가져오기 
+        # 선택한 책의 페이지 가져오기
         cursor.execute(f"SELECT path, page_no FROM page WHERE path LIKE '/book_{book_id}/%';")
         vflat_pages = cursor.fetchall()
 
