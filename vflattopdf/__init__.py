@@ -233,13 +233,16 @@ if __name__ == "__main__":
         cursor.execute(sql_query)
         vflat_pages = cursor.fetchall()
 
+    # vflat_pages 의 두번째 인자인 page_no 를 기준으로 정렬
+    vflat_pages.sort(key=lambda x: int(x[1]))
     # pprint(vflat_pages)
+
     out_pages = copy_vflat_to_out(vflat_pages, f'./out/{book_title}') # vflat page 를 page 번호 순서대로 out 폴더에 복사
-    crop_pages = crop_images_by_text(out_pages, f'./out/{book_title}/crop', space = 150) # out 폴더에 있는 이미지를 텍스트 기준으로 자르기
+    crop_pages = crop_images_by_text(out_pages, f'./out/{book_title}/crop', space = 200) # out 폴더에 있는 이미지를 텍스트 기준으로 자르기
     # todo normalize_images_to_reference 함수에서 기준 이미지를 자동으로 선택하도록 수정, 중간값을 찾으면 될 거 같음
     # crop_pages[3] 을 화면에 보여주기
-    crop_page = Image.open(crop_pages[3])
-    crop_page.show()
+    # crop_page = Image.open(crop_pages[3])
+    # crop_page.show()
 
     normalize_files = normalize_images_to_reference(crop_pages[3], crop_pages, f'./out/{book_title}/normalize') # crop 폴더에 있는 이미지를 첫번째 이미지 기준으로 정규화
     images_to_pdf(normalize_files, f'./out/{book_title}.pdf') # normalize 폴더에 있는 이미지를 PDF로 변환

@@ -43,3 +43,7 @@ poetry/core/*
 /out/*
 *.zip
 *.pdf
+bookshelf.db
+bookshelf.db-shm
+bookshelf.db-wal
+re_ocr_table
