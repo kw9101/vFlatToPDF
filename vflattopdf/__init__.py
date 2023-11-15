@@ -8,6 +8,7 @@ from reportlab.pdfgen import canvas
 import easyocr
 from tqdm import tqdm
 import time
+import subprocess
 
 # 이미지를 PDF로 변환
 def images_to_pdf(input_images, output_pdf):
@@ -134,14 +135,14 @@ def crop_images_by_text(pages, output_folder, space = 100):
 
         tbbox = find_enclosing_bbox(bounding_boxes)
 
-        # tbbox = (tbbox[0] - space, tbbox[1], tbbox[2] + space, tbbox[3])
-        left = tbbox[0] - space
-        top = tbbox[1] - space * 0.5 # tbbox[1], 위 쪽은 일정하게 자른다.
-        right = tbbox[2] + space
-        bottom = tbbox[3] + 10 # 보통 페이지를 표시한다. 바로 자른다.
-
         crop_page_path = os.path.splitext(os.path.basename(page))[0] + '_crop.jpg'
         crop_page_path = os.path.join(output_folder, crop_page_path)
+
+        left = tbbox[0] - space
+        #top = tbbox[1] - 20
+        top = 200 # 위 쪽은 일정하게 자른다.
+        right = tbbox[2] + space
+        bottom = tbbox[3] + 15 # 보통 페이지를 표시한다. 바로 자른다.
         crop_image(page, crop_page_path, (left, top, right, bottom))
         crop_pages.append(crop_page_path)
 
@@ -182,7 +183,14 @@ def normalize_images_to_reference(reference_image_path, pages, output_folder):
 
 
 if __name__ == "__main__":
-    select_book_index = 2 # pdf 로 변환할 책 선택
+    # command = "adb pull /sdcard/Android/data/com.voyagerx.scanner/files/vFlat ."
+    command = "adbsync pull /sdcard/Android/data/com.voyagerx.scanner/files/vFlat ."
+
+    try:
+        result = subprocess.run(command, shell=True, check=True, text=True, stderr=subprocess.PIPE)
+        print("명령어 실행 결과:", result.stdout)
+    except subprocess.CalledProcessError as e:
+        print("오류 발생:", e.stderr)
 
     db_path = './vFlat/bookshelf.db'
     # SQLite 데이터베이스에 연결
@@ -193,6 +201,13 @@ if __name__ == "__main__":
         # 테이블 목록 가져오기
         cursor.execute("SELECT id, title, cover FROM book;")
         books = cursor.fetchall()
+
+    # books 에서 책 선택할 수 있게 물어보기
+    for i, book in enumerate(books):
+        print(i, book[1])
+
+    # 책 선택 입력 받기
+    select_book_index = int(input("책 선택: "))
 
     book = books[select_book_index]
     book_id = book[0]
@@ -207,12 +222,26 @@ if __name__ == "__main__":
         cursor = connection.cursor()
 
         # 선택한 책의 페이지 가져오기
-        cursor.execute(f"SELECT path, page_no FROM page WHERE path LIKE '/book_{book_id}/%';")
+        sql_query = f"SELECT path, page_no FROM page WHERE path LIKE '/book_{book_id}/%'"
+        if 'begin_page_no' in locals():
+            if 'end_page_no' in locals():
+                sql_query += f" AND page_no BETWEEN {begin_page_no} AND {end_page_no}"
+            else:
+                sql_query += f" AND page_no >= {begin_page_no}"
+        sql_query += ";"
+
+        cursor.execute(sql_query)
         vflat_pages = cursor.fetchall()
 
+    # pprint(vflat_pages)
     out_pages = copy_vflat_to_out(vflat_pages, f'./out/{book_title}') # vflat page 를 page 번호 순서대로 out 폴더에 복사
     crop_pages = crop_images_by_text(out_pages, f'./out/{book_title}/crop', space = 150) # out 폴더에 있는 이미지를 텍스트 기준으로 자르기
-    normalize_files = normalize_images_to_reference(crop_pages[0], crop_pages, f'./out/{book_title}/normalize') # crop 폴더에 있는 이미지를 첫번째 이미지 기준으로 정규화
+    # todo normalize_images_to_reference 함수에서 기준 이미지를 자동으로 선택하도록 수정, 중간값을 찾으면 될 거 같음
+    # crop_pages[3] 을 화면에 보여주기
+    crop_page = Image.open(crop_pages[3])
+    crop_page.show()
+
+    normalize_files = normalize_images_to_reference(crop_pages[3], crop_pages, f'./out/{book_title}/normalize') # crop 폴더에 있는 이미지를 첫번째 이미지 기준으로 정규화
     images_to_pdf(normalize_files, f'./out/{book_title}.pdf') # normalize 폴더에 있는 이미지를 PDF로 변환
 
     print(f"작업 완료: ./out/{book_title}.pdf")

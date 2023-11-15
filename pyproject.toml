@@ -15,6 +15,7 @@ tqdm = "^4.66.1"
 torch = {version = "^2.0.1+cu118", source = "pytorch", platform = "WIN32|WIN64"}
 torchvision = {version = "^0.15.2+cu118", source = "pytorch", platform = "WIN32|WIN64"}
 torchaudio = {version = "^2.0.2+cu118", source = "pytorch", platform = "WIN32|WIN64"}
+betteradbsync = "^1.4.0"
 
 
 [[tool.poetry.source]]
